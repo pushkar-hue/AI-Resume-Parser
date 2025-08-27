@@ -67,8 +67,8 @@ graph TD;
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-username/ai-resume-parser.git
-    cd ai-resume-parser
+    git clone https://github.com/pushkar-hue/AI-Resume-Parser.git
+    cd AI-Resume-Parser
     ```
 
 2.  **Create and activate a virtual environment:**
