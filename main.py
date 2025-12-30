@@ -10,6 +10,7 @@ from typing import List
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
 import crud, models, schemas
+from fastapi.middleware.cors import CORSMiddleware
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -27,6 +28,13 @@ app = FastAPI(
     title="Resume Parser API",
     description="An API that parses resumes (PDF, DOCX) using Gemini and returns structured JSON data.",
     version="1.1.0",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, replace with your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 def get_db():
@@ -55,25 +63,35 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
 async def parse_resume_with_gemini(resume_text: str) -> schemas.ResumeData:
     prompt = f"""
     You are an expert resume parsing AI. Your task is to extract key information from the following resume text and provide the output in a clean, structured JSON format.
-    The JSON output must strictly adhere to the following schema. Do not add any extra fields or explanations. If a field is not found, use null for single fields or an empty array [] for lists.
+    The JSON output must strictly adhere to the following schema.
     JSON Schema:
     {json.dumps(schemas.ResumeData.model_json_schema(), indent=2)}
+    
     Resume Text:
-    ---
     {resume_text}
-    ---
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        # Use await correctly
         response = await model.generate_content_async(prompt)
-        json_response_text = response.text.strip().replace("```json", "").replace("```", "").strip()
-        parsed_json = json.loads(json_response_text)
-        resume_data = schemas.ResumeData(**parsed_json)
-        return resume_data
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=500, detail="Failed to decode JSON from LLM response.")
+        
+        # DEBUG: Print the response to terminal to see what Gemini said
+        print("DEBUG Gemini Response:", response.text)
+
+        # Clean the response
+        text_content = response.text
+        if "```json" in text_content:
+            text_content = text_content.split("```json")[1].split("```")[0]
+        
+        parsed_json = json.loads(text_content.strip())
+        return schemas.ResumeData(**parsed_json)
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred during LLM processing: {e}")
+        # THIS LINE IS CRITICAL: It will print the exact error in your VS Code terminal
+        print(f"CRITICAL ERROR IN PARSING: {str(e)}")
+        import traceback
+        traceback.print_exc() 
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/parse-resume/", response_model=schemas.ResumeData, tags=["Resume Parsing"])
 async def parse_and_save_resume(file: UploadFile = File(...), db: Session = Depends(get_db)):
