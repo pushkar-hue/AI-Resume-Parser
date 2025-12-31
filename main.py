@@ -156,14 +156,11 @@ def search_resume_by_email(email: str, db: Session = Depends(get_db)):
 
 @app.get("/resumes/", response_model=List[schemas.ResumeData], tags=["Database"])
 def list_all_resumes(db: Session = Depends(get_db)):
-    """
-    Retrieve all parsed resumes from the database.
-    """
     resumes = db.query(models.Resume).all()
-    
     result = []
     for db_resume in resumes:
         resume_data = schemas.ResumeData(
+            id=db_resume.id,  # Add this line
             personal_info=db_resume.personal_info,
             summary=db_resume.summary,
             skills=db_resume.skills,
@@ -172,8 +169,8 @@ def list_all_resumes(db: Session = Depends(get_db)):
             education=db_resume.educations
         )
         result.append(resume_data)
-    
     return result
+        
 
 @app.delete("/resumes/{resume_id}", tags=["Database"])
 def delete_resume(resume_id: int, db: Session = Depends(get_db)):

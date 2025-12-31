@@ -43,6 +43,7 @@ class Education(BaseModel):
     model_config = orm_config
 
 class ResumeData(BaseModel):
+    id: Optional[int] = None 
     personal_info: PersonalInfo
     summary: Optional[str] = Field(None, description="A professional summary or objective statement from the resume.")
     skills: Optional[List[str]] = Field([], description="A list of key skills and technologies.")
